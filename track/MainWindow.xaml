@@ -1,0 +1,215 @@
+﻿<Window x:Class="Mp3MetaEditor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MP3 Meta Editor" Width="600" Height="500"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" WindowStartupLocation="CenterScreen" MouseLeftButtonDown="Window_MouseLeftButtonDown">
+    <Window.Resources>
+        <DropShadowEffect x:Key="BorderShadow" Color="Black" BlurRadius="10" ShadowDepth="0" Opacity="0.2"/>
+
+        <Style x:Key="ImportButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="140"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Background" Value="#F5F5F5"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WindowControlButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Rectangle Fill="Transparent" Width="32" Height="32"/>
+                            <Line X1="10" Y1="10" X2="22" Y2="22" Stroke="#333333" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <Line X1="22" Y1="10" X2="10" Y2="22" Stroke="#333333" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="MinimizeButtonStyle" TargetType="Button" BasedOn="{StaticResource WindowControlButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Rectangle Fill="Transparent" Width="32" Height="32"/>
+                            <Line X1="10" Y1="16" X2="22" Y2="16" Stroke="#333333" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DownloadButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="50"/>
+            <Setter Property="Height" Value="50"/>
+            <Setter Property="Background" Value="#F5F5F5"/>
+            <Setter Property="Foreground" Value="#333333"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                            <Grid>
+                                <Path Data="M 12 0 L 12 16 M 6 10 L 12 16 L 18 10" Stroke="#333333" StrokeThickness="2" StrokeLineJoin="Round" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="6.5,0,0,0"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InputFieldStyle" TargetType="Border">
+            <Setter Property="Background" Value="#FFFFFF"/>
+            <Setter Property="BorderBrush" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+
+        <Style x:Key="BlurBackgroundStyle" TargetType="Border">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <SolidColorBrush Color="#FFFFFF" Opacity="0.3"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <BlurEffect Radius="25"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="20" BorderBrush="#CCCCCC" BorderThickness="1">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                <GradientStop Color="#BCFFFFFF" Offset="0.0"/>
+                <GradientStop Color="#CCEEEEEE" Offset="1.0"/>
+            </LinearGradientBrush>
+        </Border.Background>
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="10" Color="black" ShadowDepth="0" Opacity="0.7"/>
+        </Border.Effect>
+        <Grid>
+            <DockPanel LastChildFill="True" Background="Transparent" Height="40" VerticalAlignment="Top">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <Button Click="MinimizeButton_Click" Style="{StaticResource MinimizeButtonStyle}"/>
+                    <Button Click="CloseButton_Click" Style="{StaticResource WindowControlButtonStyle}"/>
+                </StackPanel>
+            </DockPanel>
+
+            <Grid Margin="10,50,10,10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="13*"/>
+                    <RowDefinition Height="6*"/>
+                    <RowDefinition Height="421*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="2*" />
+                    <ColumnDefinition Width="1*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.ColumnSpan="2" Style="{StaticResource BlurBackgroundStyle}" Grid.RowSpan="3"/>
+                <Border Grid.Column="0" Background="#F5F5F5" Padding="20" CornerRadius="10" 
+                        Effect="{StaticResource BorderShadow}" Margin="0,0,66,0" Grid.RowSpan="3">
+                    <StackPanel VerticalAlignment="Top">
+                        <StackPanel Margin="0,0,0,20" HorizontalAlignment="Left">
+                            <Label Content="Select Audio:" FontWeight="SemiBold" Foreground="#333333"/>
+                            <Button Content="📂 Choose File" Click="AudioFileButton_Click" 
+                                    Style="{StaticResource ImportButtonStyle}" HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,20" HorizontalAlignment="Left">
+                            <Label Content="Select Cover Image:" FontWeight="SemiBold" Foreground="#333333"/>
+                            <Button Content="🖼️ Choose Cover" Click="CoverFileButton_Click" 
+                                    Style="{StaticResource ImportButtonStyle}" HorizontalAlignment="Left"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,15" HorizontalAlignment="Left">
+                            <Label Content="Title:" FontWeight="SemiBold" Foreground="#333333"/>
+                            <Border Style="{StaticResource InputFieldStyle}" Width="270" Height="30">
+                                <TextBox Name="TitleTextBox" TextChanged="Input_TextChanged" 
+                                         Background="Transparent" BorderThickness="0" Padding="5"/>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,15" HorizontalAlignment="Left">
+                            <Label Content="Artist:" FontWeight="SemiBold" Foreground="#333333"/>
+                            <Border Style="{StaticResource InputFieldStyle}" Width="270" Height="30">
+                                <TextBox Name="ArtistTextBox" TextChanged="Input_TextChanged" 
+                                         Background="Transparent" BorderThickness="0" Padding="5"/>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,15" HorizontalAlignment="Left">
+                            <Label Content="Album:" FontWeight="SemiBold" Foreground="#333333"/>
+                            <Border Style="{StaticResource InputFieldStyle}" Width="270" Height="30">
+                                <TextBox Name="AlbumTextBox" TextChanged="Input_TextChanged" 
+                                         Background="Transparent" BorderThickness="0" Padding="5"/>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="#F5F5F5" Padding="20" CornerRadius="10" 
+                        Effect="{StaticResource BorderShadow}" Grid.ColumnSpan="2" Margin="335,0,0,0" Grid.RowSpan="3">
+                    <StackPanel VerticalAlignment="Top">
+                        <Border Width="180" Height="180" Background="#CCCCCC" CornerRadius="10" 
+                                HorizontalAlignment="Center" Margin="0,0,0,30">
+                            <Image Name="CoverImage" Stretch="Fill"/>
+                        </Border>
+
+                        <StackPanel Margin="0,0,0,20">
+                            <TextBlock Name="PreviewTitle" Text="Title" FontSize="20" 
+                                       FontWeight="Bold" Foreground="#333333" TextAlignment="Center"/>
+                            <TextBlock Name="PreviewArtist" Text="Artist — Album" FontSize="16" 
+                                       Foreground="#666666" TextAlignment="Center"/>
+                            <TextBlock Name="LosslessTag" Text="Lossless" FontSize="14" 
+                                       Foreground="#333333" Visibility="Collapsed" TextAlignment="Center"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                            <Button Name="PlayButton" Click="PlayButton_Click" Background="Transparent" 
+                                    BorderBrush="Transparent" Width="20" Height="20" Cursor="Hand" Margin="5,0">
+                                <Path Data="M 0 0 L 0 20 L 15 10 Z" Fill="Black" Stretch="Uniform"/>
+                            </Button>
+                            <Button Name="PauseButton" Click="PauseButton_Click" Background="Transparent" 
+                                    BorderBrush="Transparent" BorderThickness="0" Width="20" Height="20" Cursor="Hand" IsEnabled="False" Margin="5,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Rectangle Width="5" Height="20" Fill="Black" Margin="0,0,2,0"/>
+                                    <Rectangle Width="5" Height="20" Fill="Black" Margin="2,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <Button Name="WriteMetaButton" Style="{StaticResource DownloadButtonStyle}" 
+                                IsEnabled="False" Click="WriteMetaButton_Click" HorizontalAlignment="Center" Margin="0,20,0,0" Height="37" Width="39"/>
+                        <MediaElement Name="AudioPreview" Width="200" Height="30" Margin="0,10,0,0" 
+                                      LoadedBehavior="Manual" Stretch="Fill"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
