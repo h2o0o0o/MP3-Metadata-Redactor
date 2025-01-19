@@ -103,13 +103,13 @@ namespace Mp3MetaEditor
                 {
                     Filter = "MP3 Files (*.mp3)|*.mp3",
                     Title = "Save Updated File",
-                    FileName = "updated_" + Path.GetFileName(selectedAudioPath)
+                    FileName = string.IsNullOrWhiteSpace(TitleTextBox.Text) ? "updated_" + Path.GetFileName(selectedAudioPath) : TitleTextBox.Text + ".mp3"
                 };
 
                 if (sfd.ShowDialog() == true)
                 {
                     File.WriteAllBytes(sfd.FileName, updatedAudio);
-                    MessageBox.Show("Metadata successfully written and file saved.", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Done", "Peter Alert!", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
@@ -162,14 +162,14 @@ namespace Mp3MetaEditor
 
         private void WriteFrame(MemoryStream ms, string frameID, string content)
         {
-            byte[] contentBytes = Encoding.UTF8.GetBytes(content);
+            byte[] contentBytes = Encoding.Unicode.GetBytes(content);
             ms.Write(Encoding.ASCII.GetBytes(frameID), 0, 4);
             byte[] size = BitConverter.GetBytes(contentBytes.Length + 1);
             if (BitConverter.IsLittleEndian)
                 Array.Reverse(size);
             ms.Write(size, 0, 4);
             ms.Write(new byte[2], 0, 2);
-            ms.WriteByte(0);
+            ms.WriteByte(1);
             ms.Write(contentBytes, 0, contentBytes.Length);
         }
 
