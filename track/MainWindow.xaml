@@ -185,13 +185,13 @@
                     <StackPanel VerticalAlignment="Top">
                         <StackPanel Margin="0,0,0,20" HorizontalAlignment="Left">
                             <Label Content="Select Audio:" FontWeight="SemiBold" Foreground="#333333"/>
-                            <Button Content="📂 Choose File" Click="AudioFileButton_Click" 
+                            <Button x:Name="AudioFileButtonControl" Content="📂 Choose File" Click="AudioFileButton_Click" 
                                     Style="{StaticResource ImportButtonStyle}" HorizontalAlignment="Left"/>
                         </StackPanel>
 
                         <StackPanel Margin="0,0,0,20" HorizontalAlignment="Left">
                             <Label Content="Select Cover Image:" FontWeight="SemiBold" Foreground="#333333"/>
-                            <Button Content="🖼️ Choose Cover" Click="CoverFileButton_Click" 
+                            <Button x:Name="CoverFileButtonControl" Content="🖼️ Choose Cover" Click="CoverFileButton_Click" 
                                     Style="{StaticResource ImportButtonStyle}" HorizontalAlignment="Left"/>
                         </StackPanel>
 
@@ -229,13 +229,11 @@
                             <Image Name="CoverImage" Stretch="Fill"/>
                         </Border>
 
-                        <StackPanel Margin="0,0,0,20">
+                        <StackPanel Margin="0,-20,0,20">
                             <TextBlock Name="PreviewTitle" Text="Title" FontSize="20" 
                                        FontWeight="Bold" Foreground="#333333" TextAlignment="Center"/>
                             <TextBlock Name="PreviewArtist" Text="Artist — Album" FontSize="16" 
                                        Foreground="#666666" TextAlignment="Center"/>
-                            <TextBlock Name="LosslessTag" Text="Lossless" FontSize="14" 
-                                       Foreground="#333333" Visibility="Collapsed" TextAlignment="Center"/>
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
@@ -255,6 +253,7 @@
                                 IsEnabled="False" Click="WriteMetaButton_Click" HorizontalAlignment="Center" Margin="0,20,0,0" Height="37" Width="39"/>
                         <MediaElement Name="AudioPreview" Width="200" Height="30" Margin="0,10,0,0" 
                                       LoadedBehavior="Manual" Stretch="Fill"/>
+
                     </StackPanel>
                 </Border>
             </Grid>

@@ -3,10 +3,11 @@ using System.IO;
 using System.Text;
 using System.Windows;
 using Microsoft.Win32;
-using System.Windows.Media.Imaging;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
 using System.Configuration;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+
 
 namespace Mp3MetaEditor
 {
@@ -92,19 +93,13 @@ namespace Mp3MetaEditor
                 AudioPreview.Source = new Uri(selectedAudioPath);
                 AudioPreview.Position = TimeSpan.Zero;
 
-                if (Path.GetExtension(selectedAudioPath).Equals(".flac", StringComparison.OrdinalIgnoreCase))
-                {
-                    LosslessTag.Visibility = Visibility.Visible;
-                }
-                else
-                {
-                    LosslessTag.Visibility = Visibility.Collapsed;
-                }
-
                 ReadID3Tags(audioData);
                 CheckIfReady();
+
+                AudioFileButtonControl.Content = $"📂 {Path.GetFileName(selectedAudioPath)}";
             }
         }
+
 
         private void DisplayCoverImage(byte[] imageData)
         {
@@ -114,8 +109,8 @@ namespace Mp3MetaEditor
                 {
                     var image = new BitmapImage();
                     image.BeginInit();
-                    image.StreamSource = ms;
                     image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.StreamSource = ms;
                     image.EndInit();
                     CoverImage.Source = image;
                 }
@@ -132,15 +127,30 @@ namespace Mp3MetaEditor
             {
                 if (audio.Length > 10 && Encoding.ASCII.GetString(audio, 0, 3) == "ID3")
                 {
+                    byte versionMajor = audio[3];
+                    byte versionMinor = audio[4];
+                    bool isV24 = (versionMajor == 4);
                     int id3v2Size = ReadSynchsafeInt(audio, 6);
                     int offset = 10;
 
-                    while (offset < id3v2Size && offset + 10 <= audio.Length)
+                    while (offset < 10 + id3v2Size && offset + 10 <= audio.Length)
                     {
                         string frameID = Encoding.ASCII.GetString(audio, offset, 4);
-                        int frameSize = ReadSynchsafeInt(audio, offset + 4);
+                        int frameSize;
+                        if (versionMajor == 4)
+                        {
+                            frameSize = ReadSynchsafeInt(audio, offset + 4);
+                        }
+                        else
+                        {
+                            frameSize = (audio[offset + 4] << 24) |
+                                        (audio[offset + 5] << 16) |
+                                        (audio[offset + 6] << 8) |
+                                        (audio[offset + 7]);
+                        }
 
-                        if (frameSize <= 0 || offset + 10 + frameSize > audio.Length) break;
+                        if (frameSize <= 0 || offset + 10 + frameSize > audio.Length)
+                            break;
 
                         if (frameID == "TIT2")
                         {
@@ -225,6 +235,7 @@ namespace Mp3MetaEditor
             }
         }
 
+
         private void HandleAudioFile(string filePath)
         {
             try
@@ -235,23 +246,17 @@ namespace Mp3MetaEditor
                 AudioPreview.Source = new Uri(filePath);
                 AudioPreview.Position = TimeSpan.Zero;
 
-                if (Path.GetExtension(filePath).Equals(".flac", StringComparison.OrdinalIgnoreCase))
-                {
-                    LosslessTag.Visibility = Visibility.Visible;
-                }
-                else
-                {
-                    LosslessTag.Visibility = Visibility.Collapsed;
-                }
-
                 ReadID3Tags(audioData);
                 CheckIfReady();
+
+                AudioFileButtonControl.Content = $"📂 {Path.GetFileName(selectedAudioPath)}";
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error handling audio file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
 
         private void HandleImageFile(string filePath)
         {
@@ -261,12 +266,15 @@ namespace Mp3MetaEditor
                 coverData = File.ReadAllBytes(filePath);
 
                 CoverImage.Source = new BitmapImage(new Uri(filePath));
+
+                CoverFileButtonControl.Content = $"🖼️ {Path.GetFileName(selectedCoverPath)}";
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error handling image file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
 
 
         private string ReadTextFrame(byte[] audio, int offset, int frameSize)
@@ -305,8 +313,11 @@ namespace Mp3MetaEditor
                 coverData = File.ReadAllBytes(selectedCoverPath);
 
                 CoverImage.Source = new BitmapImage(new Uri(selectedCoverPath));
+
+                CoverFileButtonControl.Content = $"🖼️ {Path.GetFileName(selectedCoverPath)}";
             }
         }
+
 
 
         private void Input_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -421,7 +432,8 @@ namespace Mp3MetaEditor
                 frame.Write(new byte[4], 0, 4);
                 frame.Write(new byte[2], 0, 2);
                 frame.WriteByte(0);
-                frame.Write(Encoding.ASCII.GetBytes("image/jpeg"), 0, "image/jpeg".Length);
+                string mimeType = "image/jpeg";
+                frame.Write(Encoding.ASCII.GetBytes(mimeType), 0, mimeType.Length);
                 frame.WriteByte(0);
                 frame.WriteByte(3);
                 frame.WriteByte(0);
@@ -493,19 +505,63 @@ namespace Mp3MetaEditor
         {
             try
             {
-                int mimeTypeEnd = Array.IndexOf(audio, (byte)0, offset, frameSize);
-                if (mimeTypeEnd < 0 || mimeTypeEnd >= offset + frameSize) return null;
+                if (frameSize < 1)
+                    return null;
 
-                int descriptionEnd = Array.IndexOf(audio, (byte)0, mimeTypeEnd + 1, frameSize - (mimeTypeEnd + 1 - offset));
-                if (descriptionEnd < 0 || descriptionEnd >= offset + frameSize) return null;
+                byte encoding = audio[offset];
+                int current = offset + 1;
 
-                int imageDataOffset = descriptionEnd + 1;
-                int imageDataLength = frameSize - (imageDataOffset - offset);
+                int mimeTypeEnd = Array.IndexOf(audio, (byte)0, current, frameSize - (current - offset));
+                if (mimeTypeEnd < 0)
+                    return null;
+                string mimeType = Encoding.ASCII.GetString(audio, current, mimeTypeEnd - current);
+                current = mimeTypeEnd + 1;
 
-                if (imageDataLength <= 0 || imageDataOffset + imageDataLength > audio.Length) return null;
+                if (current >= offset + frameSize)
+                    return null;
+
+                byte pictureType = audio[current];
+                current += 1;
+
+                string description = string.Empty;
+                if (encoding == 0)
+                {
+                    int descEnd = Array.IndexOf(audio, (byte)0, current, frameSize - (current - offset));
+                    if (descEnd < 0)
+                        return null;
+                    description = Encoding.GetEncoding("ISO-8859-1").GetString(audio, current, descEnd - current);
+                    current = descEnd + 1;
+                }
+                else if (encoding == 1)
+                {
+                    int descEnd = -1;
+                    for (int i = current; i < offset + frameSize - 1; i += 2)
+                    {
+                        if (audio[i] == 0 && audio[i + 1] == 0)
+                        {
+                            descEnd = i;
+                            break;
+                        }
+                    }
+                    if (descEnd < 0)
+                        return null;
+                    description = Encoding.Unicode.GetString(audio, current, descEnd - current);
+                    current = descEnd + 2;
+                }
+                else
+                {
+                    return null;
+                }
+
+                if (current >= offset + frameSize)
+                    return null;
+
+                int imageDataLength = offset + frameSize - current;
+                if (imageDataLength <= 0)
+                    return null;
 
                 byte[] imageData = new byte[imageDataLength];
-                Array.Copy(audio, imageDataOffset, imageData, 0, imageDataLength);
+                Array.Copy(audio, current, imageData, 0, imageDataLength);
 
                 return imageData;
             }
