@@ -17,16 +17,63 @@ namespace Mp3MetaEditor
         private string selectedAudioPath = string.Empty;
         private string selectedCoverPath = string.Empty;
         private Rect originalBounds;
-        private double originalWidth;
         private double originalHeight;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            originalWidth = this.Width;
             originalHeight = this.Height;
-            originalBounds = new Rect(this.Left, this.Top, this.Width, this.Height);
+
+            this.Loaded += MainWindow_Loaded;
+        }
+
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            PlayBounceAnimation();
+        }
+
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            var minimizeHeightAnimation = new DoubleAnimation
+            {
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(300),
+                EasingFunction = new QuadraticEase()
+            };
+
+            minimizeHeightAnimation.Completed += (s, e) =>
+            {
+                this.WindowState = WindowState.Minimized;
+                this.Height = originalHeight;
+            };
+
+            this.BeginAnimation(Window.HeightProperty, minimizeHeightAnimation);
+        }
+
+        protected override void OnStateChanged(EventArgs e)
+        {
+            base.OnStateChanged(e);
+
+            if (this.WindowState == WindowState.Normal)
+            {
+                PlayBounceAnimation();
+            }
+        }
+
+        private void PlayBounceAnimation()
+        {
+            this.Height = 0;
+            var bounceAnimation = new DoubleAnimationUsingKeyFrames
+            {
+                Duration = TimeSpan.FromMilliseconds(300),
+            };
+
+            bounceAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromPercent(0)));
+            bounceAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(originalHeight * 1.01, KeyTime.FromPercent(0.7), new QuadraticEase { EasingMode = EasingMode.EaseOut }));
+            bounceAnimation.KeyFrames.Add(new EasingDoubleKeyFrame(originalHeight, KeyTime.FromPercent(1), new QuadraticEase { EasingMode = EasingMode.EaseIn }));
+
+            this.BeginAnimation(Window.HeightProperty, bounceAnimation);
         }
 
         private void AudioFileButton_Click(object sender, RoutedEventArgs e)
@@ -41,6 +88,7 @@ namespace Mp3MetaEditor
             {
                 selectedAudioPath = ofd.FileName;
                 audioData = File.ReadAllBytes(selectedAudioPath);
+
                 AudioPreview.Source = new Uri(selectedAudioPath);
                 AudioPreview.Position = TimeSpan.Zero;
 
@@ -53,7 +101,193 @@ namespace Mp3MetaEditor
                     LosslessTag.Visibility = Visibility.Collapsed;
                 }
 
+                ReadID3Tags(audioData);
                 CheckIfReady();
+            }
+        }
+
+        private void DisplayCoverImage(byte[] imageData)
+        {
+            try
+            {
+                using (var ms = new MemoryStream(imageData))
+                {
+                    var image = new BitmapImage();
+                    image.BeginInit();
+                    image.StreamSource = ms;
+                    image.CacheOption = BitmapCacheOption.OnLoad;
+                    image.EndInit();
+                    CoverImage.Source = image;
+                }
+            }
+            catch
+            {
+                CoverImage.Source = null;
+            }
+        }
+
+        private void ReadID3Tags(byte[] audio)
+        {
+            try
+            {
+                if (audio.Length > 10 && Encoding.ASCII.GetString(audio, 0, 3) == "ID3")
+                {
+                    int id3v2Size = ReadSynchsafeInt(audio, 6);
+                    int offset = 10;
+
+                    while (offset < id3v2Size && offset + 10 <= audio.Length)
+                    {
+                        string frameID = Encoding.ASCII.GetString(audio, offset, 4);
+                        int frameSize = ReadSynchsafeInt(audio, offset + 4);
+
+                        if (frameSize <= 0 || offset + 10 + frameSize > audio.Length) break;
+
+                        if (frameID == "TIT2")
+                        {
+                            TitleTextBox.Text = ReadTextFrame(audio, offset + 10, frameSize);
+                        }
+                        else if (frameID == "TPE1")
+                        {
+                            ArtistTextBox.Text = ReadTextFrame(audio, offset + 10, frameSize);
+                        }
+                        else if (frameID == "TALB")
+                        {
+                            AlbumTextBox.Text = ReadTextFrame(audio, offset + 10, frameSize);
+                        }
+                        else if (frameID == "APIC")
+                        {
+                            coverData = ReadAPICFrame(audio, offset + 10, frameSize);
+                            if (coverData != null)
+                            {
+                                DisplayCoverImage(coverData);
+                            }
+                        }
+
+                        offset += 10 + frameSize;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error reading ID3 tags: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void Window_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[]? files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files != null && files.Length > 0)
+                {
+                    string fileExtension = Path.GetExtension(files[0]).ToLower();
+                    if (fileExtension == ".mp3" || fileExtension == ".flac" || fileExtension == ".wav" ||
+                        fileExtension == ".jpg" || fileExtension == ".jpeg" || fileExtension == ".png")
+                    {
+                        e.Effects = DragDropEffects.Copy;
+                    }
+                    else
+                    {
+                        e.Effects = DragDropEffects.None;
+                    }
+                }
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
+
+        private void Window_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                string[]? files = e.Data.GetData(DataFormats.FileDrop) as string[];
+                if (files != null && files.Length > 0)
+                {
+                    string filePath = files[0];
+                    string fileExtension = Path.GetExtension(filePath).ToLower();
+
+                    if (fileExtension == ".mp3" || fileExtension == ".flac" || fileExtension == ".wav")
+                    {
+                        HandleAudioFile(filePath);
+                    }
+                    else if (fileExtension == ".jpg" || fileExtension == ".jpeg" || fileExtension == ".png")
+                    {
+                        HandleImageFile(filePath);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Unsupported file type.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+            }
+        }
+
+        private void HandleAudioFile(string filePath)
+        {
+            try
+            {
+                selectedAudioPath = filePath;
+                audioData = File.ReadAllBytes(filePath);
+
+                AudioPreview.Source = new Uri(filePath);
+                AudioPreview.Position = TimeSpan.Zero;
+
+                if (Path.GetExtension(filePath).Equals(".flac", StringComparison.OrdinalIgnoreCase))
+                {
+                    LosslessTag.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    LosslessTag.Visibility = Visibility.Collapsed;
+                }
+
+                ReadID3Tags(audioData);
+                CheckIfReady();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error handling audio file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void HandleImageFile(string filePath)
+        {
+            try
+            {
+                selectedCoverPath = filePath;
+                coverData = File.ReadAllBytes(filePath);
+
+                CoverImage.Source = new BitmapImage(new Uri(filePath));
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error handling image file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+
+        private string ReadTextFrame(byte[] audio, int offset, int frameSize)
+        {
+            try
+            {
+                if (frameSize < 1 || offset + frameSize > audio.Length) return string.Empty;
+
+                byte encoding = audio[offset];
+                int textOffset = offset + 1;
+
+                if (encoding == 0 && textOffset < audio.Length)
+                    return Encoding.GetEncoding("ISO-8859-1").GetString(audio, textOffset, frameSize - 1);
+                else if (encoding == 1 && textOffset + 1 < audio.Length)
+                    return Encoding.Unicode.GetString(audio, textOffset, frameSize - 1);
+
+                return string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
             }
         }
 
@@ -69,67 +303,15 @@ namespace Mp3MetaEditor
             {
                 selectedCoverPath = ofd.FileName;
                 coverData = File.ReadAllBytes(selectedCoverPath);
+
                 CoverImage.Source = new BitmapImage(new Uri(selectedCoverPath));
             }
         }
 
+
         private void Input_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
             UpdatePreview();
-        }
-
-        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
-        {
-            var minimizeWidthAnimation = new DoubleAnimation
-            {
-                To = 0,
-                Duration = TimeSpan.FromMilliseconds(300),
-                EasingFunction = new QuadraticEase()
-            };
-
-            var minimizeHeightAnimation = new DoubleAnimation
-            {
-                To = 0,
-                Duration = TimeSpan.FromMilliseconds(300),
-                EasingFunction = new QuadraticEase()
-            };
-
-            minimizeHeightAnimation.Completed += (s, e) =>
-            {
-                this.WindowState = WindowState.Minimized;
-                this.Width = originalWidth;
-                this.Height = originalHeight;
-            };
-        }
-
-        protected override void OnStateChanged(EventArgs e)
-        {
-            base.OnStateChanged(e);
-            if (WindowState == WindowState.Maximized)
-            {
-                originalBounds = new Rect(RestoreBounds.Left, RestoreBounds.Top, RestoreBounds.Width, RestoreBounds.Height);
-            }
-            else if (this.WindowState == WindowState.Normal)
-            {
-                var restoreWidthAnimation = new DoubleAnimation
-                {
-                    From = 0,
-                    To = originalBounds.Width,
-                    Duration = TimeSpan.FromMilliseconds(300),
-                    EasingFunction = new QuadraticEase()
-                };
-
-                var restoreHeightAnimation = new DoubleAnimation
-                {
-                    From = 0,
-                    To = originalBounds.Height,
-                    Duration = TimeSpan.FromMilliseconds(300),
-                    EasingFunction = new QuadraticEase()
-                };
-
-                this.BeginAnimation(Window.WidthProperty, restoreWidthAnimation);
-                this.BeginAnimation(Window.HeightProperty, restoreHeightAnimation);
-            }
         }
 
         private void UpdatePreview()
@@ -305,6 +487,31 @@ namespace Mp3MetaEditor
                 AudioPreview.Pause();
                 PlayButton.IsEnabled = true;
                 PauseButton.IsEnabled = false;
+            }
+        }
+        private byte[]? ReadAPICFrame(byte[] audio, int offset, int frameSize)
+        {
+            try
+            {
+                int mimeTypeEnd = Array.IndexOf(audio, (byte)0, offset, frameSize);
+                if (mimeTypeEnd < 0 || mimeTypeEnd >= offset + frameSize) return null;
+
+                int descriptionEnd = Array.IndexOf(audio, (byte)0, mimeTypeEnd + 1, frameSize - (mimeTypeEnd + 1 - offset));
+                if (descriptionEnd < 0 || descriptionEnd >= offset + frameSize) return null;
+
+                int imageDataOffset = descriptionEnd + 1;
+                int imageDataLength = frameSize - (imageDataOffset - offset);
+
+                if (imageDataLength <= 0 || imageDataOffset + imageDataLength > audio.Length) return null;
+
+                byte[] imageData = new byte[imageDataLength];
+                Array.Copy(audio, imageDataOffset, imageData, 0, imageDataLength);
+
+                return imageData;
+            }
+            catch
+            {
+                return null;
             }
         }
     }

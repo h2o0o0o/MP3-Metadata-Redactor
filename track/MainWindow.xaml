@@ -28,32 +28,80 @@
             </Setter>
         </Style>
 
-        <Style x:Key="WindowControlButtonStyle" TargetType="Button">
-            <Setter Property="Width" Value="32"/>
-            <Setter Property="Height" Value="32"/>
+        <Style x:Key="CloseButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="50"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Grid>
-                            <Rectangle Fill="Transparent" Width="32" Height="32"/>
-                            <Line X1="10" Y1="10" X2="22" Y2="22" Stroke="#333333" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
-                            <Line X1="22" Y1="10" X2="10" Y2="22" Stroke="#333333" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <Border x:Name="HighlightBorder"
+                                Background="Transparent"
+                                CornerRadius="0,15,0,0"
+                                BorderBrush="Transparent"
+                                BorderThickness="0"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"/>
+
+                            <Grid>
+                                <Line X1="10" Y1="12" X2="26" Y2="28"
+                                  Stroke="#333333"
+                                  StrokeThickness="1.5"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  x:Name="CrossLine1"/>
+                                <Line X1="26" Y1="12" X2="10" Y2="28"
+                                  Stroke="#333333"
+                                  StrokeThickness="1.5"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  x:Name="CrossLine2"/>
+                            </Grid>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HighlightBorder" Property="Background" Value="#FF4444"/>
+                                <Setter TargetName="CrossLine1" Property="Stroke" Value="White"/>
+                                <Setter TargetName="CrossLine2" Property="Stroke" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
 
-        <Style x:Key="MinimizeButtonStyle" TargetType="Button" BasedOn="{StaticResource WindowControlButtonStyle}">
+        <Style x:Key="MinimizeButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Grid>
-                            <Rectangle Fill="Transparent" Width="32" Height="32"/>
-                            <Line X1="10" Y1="16" X2="22" Y2="16" Stroke="#333333" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <Border x:Name="HighlightBorder"
+                                Background="Transparent"
+                                CornerRadius="0"
+                                BorderBrush="Transparent"
+                                BorderThickness="0"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"/>
+
+                            <Line X1="12" Y1="19" X2="28" Y2="19"
+                              Stroke="#333333"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              StrokeThickness="1.7"
+                              x:Name="MinimizeLine"/>
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HighlightBorder" Property="Background" Value="#555555"/>
+                                <Setter TargetName="MinimizeLine" Property="Stroke" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -103,11 +151,11 @@
         </Style>
     </Window.Resources>
 
-    <Border CornerRadius="20" BorderBrush="#CCCCCC" BorderThickness="1">
+    <Border CornerRadius="20" BorderBrush="Transparent" BorderThickness="1">
         <Border.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                <GradientStop Color="#BCFFFFFF" Offset="0.0"/>
-                <GradientStop Color="#CCEEEEEE" Offset="1.0"/>
+                <GradientStop Color="#ccafafaf" Offset="0.0"/>
+                <GradientStop Color="White" Offset="1.0"/>
             </LinearGradientBrush>
         </Border.Background>
         <Border.Effect>
@@ -115,13 +163,13 @@
         </Border.Effect>
         <Grid>
             <DockPanel LastChildFill="True" Background="Transparent" Height="40" VerticalAlignment="Top">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
-                    <Button Click="MinimizeButton_Click" Style="{StaticResource MinimizeButtonStyle}"/>
-                    <Button Click="CloseButton_Click" Style="{StaticResource WindowControlButtonStyle}"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,0,0">
+                    <Button Click="MinimizeButton_Click" Style="{StaticResource MinimizeButtonStyle}" Margin="0,0,0,0" Height="38" Width="40"/>
+                    <Button Click="CloseButton_Click" Style="{StaticResource CloseButtonStyle}" Height="39"/>
                 </StackPanel>
             </DockPanel>
 
-            <Grid Margin="10,50,10,10">
+            <Grid Margin="10,50,10,10" AllowDrop="True" DragEnter="Window_DragEnter" Drop="Window_Drop">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="13*"/>
                     <RowDefinition Height="6*"/>
