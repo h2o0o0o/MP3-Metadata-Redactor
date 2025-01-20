@@ -5,19 +5,28 @@ using System.Windows;
 using Microsoft.Win32;
 using System.Windows.Media.Imaging;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
+using System.Configuration;
 
 namespace Mp3MetaEditor
 {
     public partial class MainWindow : Window
     {
-        private byte[] audioData;
-        private byte[] coverData;
+        private byte[]? audioData;
+        private byte[]? coverData;
         private string selectedAudioPath = string.Empty;
         private string selectedCoverPath = string.Empty;
+        private Rect originalBounds;
+        private double originalWidth;
+        private double originalHeight;
 
         public MainWindow()
         {
             InitializeComponent();
+
+            originalWidth = this.Width;
+            originalHeight = this.Height;
+            originalBounds = new Rect(this.Left, this.Top, this.Width, this.Height);
         }
 
         private void AudioFileButton_Click(object sender, RoutedEventArgs e)
@@ -71,7 +80,56 @@ namespace Mp3MetaEditor
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
-            this.WindowState = WindowState.Minimized;
+            var minimizeWidthAnimation = new DoubleAnimation
+            {
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(300),
+                EasingFunction = new QuadraticEase()
+            };
+
+            var minimizeHeightAnimation = new DoubleAnimation
+            {
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(300),
+                EasingFunction = new QuadraticEase()
+            };
+
+            minimizeHeightAnimation.Completed += (s, e) =>
+            {
+                this.WindowState = WindowState.Minimized;
+                this.Width = originalWidth;
+                this.Height = originalHeight;
+            };
+        }
+
+        protected override void OnStateChanged(EventArgs e)
+        {
+            base.OnStateChanged(e);
+            if (WindowState == WindowState.Maximized)
+            {
+                originalBounds = new Rect(RestoreBounds.Left, RestoreBounds.Top, RestoreBounds.Width, RestoreBounds.Height);
+            }
+            else if (this.WindowState == WindowState.Normal)
+            {
+                var restoreWidthAnimation = new DoubleAnimation
+                {
+                    From = 0,
+                    To = originalBounds.Width,
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    EasingFunction = new QuadraticEase()
+                };
+
+                var restoreHeightAnimation = new DoubleAnimation
+                {
+                    From = 0,
+                    To = originalBounds.Height,
+                    Duration = TimeSpan.FromMilliseconds(300),
+                    EasingFunction = new QuadraticEase()
+                };
+
+                this.BeginAnimation(Window.WidthProperty, restoreWidthAnimation);
+                this.BeginAnimation(Window.HeightProperty, restoreHeightAnimation);
+            }
         }
 
         private void UpdatePreview()
@@ -118,7 +176,7 @@ namespace Mp3MetaEditor
             }
         }
 
-        private byte[] WriteID3Tags(byte[] audio, string title, string artist, string album, byte[] cover)
+        private byte[] WriteID3Tags(byte[] audio, string title, string artist, string album, byte[]? cover)
         {
             using (MemoryStream ms = new MemoryStream())
             {
